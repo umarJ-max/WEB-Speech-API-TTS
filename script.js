@@ -32,6 +32,7 @@ class TextToSpeechApp {
         this.pauseBtn = document.getElementById('pauseBtn');
         this.stopBtn = document.getElementById('stopBtn');
         this.quickTestBtn = document.getElementById('quickTestBtn');
+        this.clearBtn = document.getElementById('clearBtn');
         
         // Progress elements
         this.progressSection = document.getElementById('progressSection');
@@ -54,6 +55,7 @@ class TextToSpeechApp {
         this.pauseBtn.addEventListener('click', () => this.pause());
         this.stopBtn.addEventListener('click', () => this.stop());
         this.quickTestBtn.addEventListener('click', () => this.quickTest());
+        this.clearBtn.addEventListener('click', () => this.clearText());
         
         // Voice loading
         if (speechSynthesis.onvoiceschanged !== undefined) {
@@ -243,6 +245,12 @@ class TextToSpeechApp {
         }, 2000);
     }
 
+    clearText() {
+        this.textInput.value = '';
+        this.updateCharCount();
+        this.textInput.focus();
+    }
+
     updateCharCount() {
         const length = this.textInput.value.length;
         this.charCount.textContent = length;
@@ -267,7 +275,7 @@ class TextToSpeechApp {
 
     updateVolumeDisplay() {
         const volume = Math.round(this.volumeRange.value * 100);
-        this.volumeValue.textContent = volume;
+        this.volumeValue.textContent = volume + '%';
     }
 
     updateUI() {
@@ -281,16 +289,16 @@ class TextToSpeechApp {
         
         // Update button text
         if (this.isPaused) {
-            this.pauseBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
+            this.pauseBtn.innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
         } else {
-            this.pauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+            this.pauseBtn.innerHTML = '<i class="fas fa-pause"></i><span>Pause</span>';
         }
         
         // Update play button
         if (this.isPlaying) {
-            this.playBtn.innerHTML = '<i class="fas fa-volume-up"></i> Speaking...';
+            this.playBtn.innerHTML = '<i class="fas fa-volume-up"></i><span>Speaking...</span>';
         } else {
-            this.playBtn.innerHTML = '<i class="fas fa-play"></i> Speak Text';
+            this.playBtn.innerHTML = '<i class="fas fa-play"></i><span>Speak</span>';
         }
     }
 
