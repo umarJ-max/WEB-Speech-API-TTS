@@ -478,9 +478,15 @@ def home():
                             </div>
                         </div>
                         
-                        <button type="submit" class="generate-btn" id="generateBtn">
-                            <i class="fas fa-magic"></i> Generate Voice
-                        </button>
+                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: center;">
+                            <button type="submit" class="generate-btn" id="generateBtn">
+                                <i class="fas fa-magic"></i> Generate Voice
+                            </button>
+                            
+                            <button type="button" onclick="quickTest()" style="background: linear-gradient(45deg, #28a745, #20c997); color: white; border: none; padding: 18px 25px; border-radius: 50px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; min-width: 120px;">
+                                <i class="fas fa-flask"></i> Quick Test
+                            </button>
+                        </div>
                     </form>
                 </div>
                 
@@ -539,10 +545,36 @@ def home():
             // Default text
             document.addEventListener('DOMContentLoaded', function() {
                 if (!textArea.value) {
-                    textArea.value = "Welcome to Umar's Edge TTS! Transform your text into natural-sounding speech with advanced AI technology. Choose from multiple languages and voices to create the perfect audio experience.";
+                    textArea.value = "Welcome to Umar's Edge TTS! Transform your text into natural-sounding speech with advanced AI technology.";
                     charCount.textContent = textArea.value.length;
                 }
+                
+                // Add service status check
+                checkServiceHealth();
             });
+            
+            async function checkServiceHealth() {
+                try {
+                    const response = await fetch('/api/health');
+                    const health = await response.json();
+                    
+                    if (health.status !== 'healthy') {
+                        showServiceStatus('The text-to-speech service is experiencing high traffic. Generation may take longer than usual.');
+                    }
+                } catch (error) {
+                    console.log('Health check failed:', error);
+                }
+            }
+            
+            function showServiceStatus(message) {
+                const statusDiv = document.createElement('div');
+                statusDiv.innerHTML = `
+                    <div style="background: linear-gradient(45deg, #ffc107, #fd7e14); color: white; padding: 12px 20px; border-radius: 10px; margin: 20px 0; text-align: center; font-weight: 500;">
+                        <i class="fas fa-info-circle"></i> ${message}
+                    </div>
+                `;
+                document.querySelector('.app-container').insertBefore(statusDiv, document.querySelector('.form-section'));
+            }
             
             document.getElementById('ttsForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
@@ -692,7 +724,24 @@ def home():
             
             function showError(message) {
                 const errorDiv = document.getElementById('error');
-                errorDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + message;
+                let errorContent = '<i class="fas fa-exclamation-triangle"></i> ' + message;
+                
+                // Add helpful tips for common errors
+                if (message.includes('busy') || message.includes('temporarily') || message.includes('overloaded')) {
+                    errorContent += `
+                        <div style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px;">
+                            <strong>💡 Quick Tips:</strong>
+                            <ul style="margin: 8px 0 0 20px; text-align: left;">
+                                <li>Try shortening your text (under 100 characters works best)</li>
+                                <li>Use a different voice (try Aria or Jenny)</li>
+                                <li>Wait 30-60 seconds before trying again</li>
+                                <li>Avoid special characters or very long sentences</li>
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                errorDiv.innerHTML = errorContent;
                 errorDiv.style.display = 'block';
                 errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
@@ -705,6 +754,24 @@ def home():
             function hideMessages() {
                 document.getElementById('error').style.display = 'none';
                 document.getElementById('success').style.display = 'none';
+            }
+            
+            // Quick test function
+            async function quickTest() {
+                const originalText = textArea.value;
+                textArea.value = "Hi";
+                charCount.textContent = "2";
+                
+                // Trigger the form submission
+                const form = document.getElementById('ttsForm');
+                const event = new Event('submit');
+                form.dispatchEvent(event);
+                
+                // Restore original text after a short delay
+                setTimeout(() => {
+                    textArea.value = originalText;
+                    charCount.textContent = originalText.length;
+                }, 1000);
             }
             
             // Add smooth animations
@@ -756,11 +823,14 @@ def text_to_speech():
         if voice not in valid_voices:
             voice = 'en-US-AriaNeural'  # Fallback to default
         
-        # Generate speech using edge-tts
-        audio_data = asyncio.run(generate_speech(text, voice, rate))
+        # Generate speech using edge-tts with fallback strategies
+        try:
+            audio_data = asyncio.run(generate_speech(text, voice, rate))
+        except asyncio.TimeoutError:
+            return jsonify({'error': 'Request timed out. Please try with shorter text or try again later.'}), 504
         
-        if not audio_data:
-            return jsonify({'error': 'Failed to generate audio. Please try again.'}), 500
+        if not audio_data or len(audio_data) == 0:
+            return jsonify({'error': 'No audio generated. Please try again with different settings.'}), 500
         
         # Return audio file
         return send_file(
@@ -785,49 +855,113 @@ def text_to_speech():
         
         return jsonify({'error': user_error}), 500
 
-async def generate_speech(text, voice, rate):
-    # Convert rate format for edge-tts compatibility
-    if rate == "0%" or rate == "+0%":
+async def generate_speech_with_fallback(text, voice, rate):
+    """Generate speech with multiple fallback strategies"""
+    
+    # Strategy 1: Try with original parameters and optimized settings
+    try:
+        return await generate_speech_optimized(text, voice, rate)
+    except Exception as e:
+        logger.warning(f"Primary method failed: {str(e)}")
+    
+    # Strategy 2: Try with different voice from same language
+    try:
+        fallback_voice = get_fallback_voice(voice)
+        if fallback_voice != voice:
+            logger.info(f"Trying fallback voice: {fallback_voice}")
+            return await generate_speech_optimized(text, fallback_voice, rate)
+    except Exception as e:
+        logger.warning(f"Fallback voice failed: {str(e)}")
+    
+    # Strategy 3: Try with default US voice and no rate
+    try:
+        logger.info("Trying with default voice and settings")
+        return await generate_speech_optimized(text, "en-US-AriaNeural", "+0%")
+    except Exception as e:
+        logger.warning(f"Default voice failed: {str(e)}")
+    
+    # Strategy 4: Try splitting text if it's long
+    if len(text) > 200:
+        try:
+            logger.info("Trying with shortened text")
+            shortened_text = text[:200] + "..." if len(text) > 200 else text
+            return await generate_speech_optimized(shortened_text, "en-US-AriaNeural", "+0%")
+        except Exception as e:
+            logger.warning(f"Shortened text failed: {str(e)}")
+    
+    # All strategies failed
+    raise Exception("Speech service is currently overloaded. Please try again in 1-2 minutes with shorter text.")
+
+def get_fallback_voice(original_voice):
+    """Get a fallback voice for the same language"""
+    fallbacks = {
+        'en-US-AriaNeural': 'en-US-JennyNeural',
+        'en-US-JennyNeural': 'en-US-AriaNeural', 
+        'en-US-DavisNeural': 'en-US-GuyNeural',
+        'en-US-GuyNeural': 'en-US-DavisNeural',
+        'en-GB-SoniaNeural': 'en-GB-RyanNeural',
+        'en-GB-RyanNeural': 'en-GB-SoniaNeural',
+        'en-AU-NatashaNeural': 'en-AU-WilliamNeural',
+        'en-AU-WilliamNeural': 'en-AU-NatashaNeural',
+    }
+    return fallbacks.get(original_voice, 'en-US-AriaNeural')
+
+async def generate_speech_optimized(text, voice, rate):
+    """Optimized speech generation with better connection handling"""
+    
+    # Clean and validate text
+    text = text.strip()
+    if len(text) == 0:
+        raise Exception("Text cannot be empty")
+    
+    # Normalize rate format
+    if rate in ["0%", "+0%", "normal"]:
         rate = "+0%"
+    elif not rate.startswith(('+', '-')):
+        rate = f"+{rate}"
     
     try:
-        # Add retry logic and better connection handling
-        # Generate a unique connection ID for better tracking
-        connection_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=32))
-        logger.info(f"Starting speech generation with connection ID: {connection_id}")
+        # Create communicate object with optimized settings
+        communicate = edge_tts.Communicate(
+            text=text,
+            voice=voice,
+            rate=rate
+        )
         
-        communicate = edge_tts.Communicate(text, voice, rate=rate)
         audio_data = b""
+        chunk_count = 0
         
+        # Stream with timeout handling
         async for chunk in communicate.stream():
             if chunk["type"] == "audio":
                 audio_data += chunk["data"]
+                chunk_count += 1
+                
+                # Basic progress check
+                if chunk_count > 1000:  # Prevent infinite loops
+                    break
         
         if len(audio_data) == 0:
-            raise Exception("No audio data received from Edge TTS service")
-            
+            raise Exception("No audio data received")
+        
+        logger.info(f"Successfully generated {len(audio_data)} bytes of audio")
         return audio_data
         
     except Exception as e:
-        # If Edge TTS fails, try alternative approach
-        if "403" in str(e) or "Invalid response status" in str(e):
-            # Try with different parameters
-            try:
-                import time
-                time.sleep(1)  # Brief delay before retry
-                
-                communicate = edge_tts.Communicate(text, voice)
-                audio_data = b""
-                
-                async for chunk in communicate.stream():
-                    if chunk["type"] == "audio":
-                        audio_data += chunk["data"]
-                
-                return audio_data
-            except Exception as retry_error:
-                raise Exception(f"Edge TTS service temporarily unavailable. Please try again in a few moments. Error: {str(retry_error)}")
+        error_msg = str(e).lower()
+        
+        if any(keyword in error_msg for keyword in ['403', 'forbidden', 'invalid response']):
+            raise Exception("Service temporarily overloaded")
+        elif any(keyword in error_msg for keyword in ['timeout', 'connection']):
+            raise Exception("Connection timeout")
+        elif any(keyword in error_msg for keyword in ['rate', 'limit']):
+            raise Exception("Rate limit exceeded")
         else:
-            raise Exception(f"Speech generation failed: {str(e)}")
+            raise Exception(f"Generation failed: {str(e)}")
+
+# Keep the old function name for compatibility
+async def generate_speech(text, voice, rate):
+    return await generate_speech_with_fallback(text, voice, rate)
 
 @app.route('/api/voices', methods=['GET'])
 def get_voices():
