@@ -3,9 +3,20 @@ from flask_cors import CORS
 import edge_tts
 import asyncio
 import io
+import random
+import string
+import time
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
+
+# Add timeout configuration
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 @app.route('/')
 def home():
@@ -553,52 +564,104 @@ def home():
                 showLoading(true);
                 hideMessages();
                 
+                let retryCount = 0;
+                const maxRetries = 2;
+                
+                async function attemptGeneration() {
+                    try {
+                        const response = await fetch('/api/tts', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                text: text,
+                                voice: voice,
+                                rate: rate
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            const contentType = response.headers.get('content-type');
+                            let errorMessage = 'Failed to generate speech';
+                            
+                            if (contentType && contentType.includes('application/json')) {
+                                const errorData = await response.json();
+                                errorMessage = errorData.error || errorMessage;
+                            } else {
+                                errorMessage = `Server error (${response.status})`;
+                            }
+                            
+                            throw new Error(errorMessage);
+                        }
+                        
+                        const blob = await response.blob();
+                        
+                        // Check if we actually got audio data
+                        if (blob.size === 0) {
+                            throw new Error('No audio data received');
+                        }
+                        
+                        const audioUrl = URL.createObjectURL(blob);
+                        
+                        const audioPlayer = document.getElementById('audioPlayer');
+                        const downloadBtn = document.getElementById('downloadBtn');
+                        
+                        audioPlayer.src = audioUrl;
+                        
+                        // Generate filename with timestamp and voice
+                        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                        const voiceName = voice.split('-')[2] || 'voice';
+                        const filename = `umar-tts-${voiceName}-${timestamp}.mp3`;
+                        
+                        downloadBtn.href = audioUrl;
+                        downloadBtn.download = filename;
+                        
+                        document.getElementById('audioContainer').style.display = 'block';
+                        showSuccess();
+                        
+                        // Auto-scroll to audio section
+                        document.getElementById('audioContainer').scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center' 
+                        });
+                        
+                    } catch (error) {
+                        console.error('Generation attempt failed:', error);
+                        
+                        // Check if we should retry
+                        if (retryCount < maxRetries && (
+                            error.message.includes('temporarily') || 
+                            error.message.includes('busy') ||
+                            error.message.includes('503') ||
+                            error.message.includes('timeout')
+                        )) {
+                            retryCount++;
+                            showRetrying(retryCount);
+                            
+                            // Wait before retrying (exponential backoff)
+                            await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+                            return await attemptGeneration();
+                        } else {
+                            throw error;
+                        }
+                    }
+                }
+                
                 try {
-                    const response = await fetch('/api/tts', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            text: text,
-                            voice: voice,
-                            rate: rate
-                        })
-                    });
+                    await attemptGeneration();
+                } catch (error) {
+                    console.error('Final error:', error);
+                    let userMessage = error.message;
                     
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Failed to generate speech');
+                    // Provide helpful suggestions based on error type
+                    if (error.message.includes('temporarily') || error.message.includes('busy')) {
+                        userMessage += ' Try using a different voice or shortening your text.';
+                    } else if (error.message.includes('timeout')) {
+                        userMessage += ' Please try with shorter text.';
                     }
                     
-                    const blob = await response.blob();
-                    const audioUrl = URL.createObjectURL(blob);
-                    
-                    const audioPlayer = document.getElementById('audioPlayer');
-                    const downloadBtn = document.getElementById('downloadBtn');
-                    
-                    audioPlayer.src = audioUrl;
-                    
-                    // Generate filename with timestamp and voice
-                    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-                    const voiceName = voice.split('-')[2] || 'voice';
-                    const filename = `umar-tts-${voiceName}-${timestamp}.mp3`;
-                    
-                    downloadBtn.href = audioUrl;
-                    downloadBtn.download = filename;
-                    
-                    document.getElementById('audioContainer').style.display = 'block';
-                    showSuccess();
-                    
-                    // Auto-scroll to audio section
-                    document.getElementById('audioContainer').scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'center' 
-                    });
-                    
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError(error.message || 'An error occurred while generating speech.');
+                    showError(userMessage);
                 } finally {
                     showLoading(false);
                 }
@@ -616,6 +679,14 @@ def home():
                     loading.style.display = 'none';
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-magic"></i> Generate Voice';
+                }
+            }
+            
+            function showRetrying(attempt) {
+                const loading = document.getElementById('loading');
+                const loadingText = loading.querySelector('p');
+                if (loadingText) {
+                    loadingText.innerHTML = `<strong>Retrying... (Attempt ${attempt + 1}/3)</strong><br>The service is busy, please wait...`;
                 }
             }
             
@@ -661,9 +732,12 @@ def home():
 def text_to_speech():
     try:
         data = request.get_json()
-        text = data.get('text', '')
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+            
+        text = data.get('text', '').strip()
         voice = data.get('voice', 'en-US-AriaNeural')
-        rate = data.get('rate', '0%')
+        rate = data.get('rate', '+0%')
         
         if not text:
             return jsonify({'error': 'Text is required'}), 400
@@ -671,8 +745,22 @@ def text_to_speech():
         if len(text) > 1000:
             return jsonify({'error': 'Text is too long. Maximum 1000 characters allowed.'}), 400
         
+        # Validate voice parameter
+        valid_voices = [
+            'en-US-AriaNeural', 'en-US-DavisNeural', 'en-US-JennyNeural', 'en-US-GuyNeural',
+            'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamNeural',
+            'es-ES-ElviraNeural', 'fr-FR-DeniseNeural', 'de-DE-KatjaNeural', 'ja-JP-NanamiNeural',
+            'ko-KR-SunHiNeural', 'zh-CN-XiaoxiaoNeural'
+        ]
+        
+        if voice not in valid_voices:
+            voice = 'en-US-AriaNeural'  # Fallback to default
+        
         # Generate speech using edge-tts
         audio_data = asyncio.run(generate_speech(text, voice, rate))
+        
+        if not audio_data:
+            return jsonify({'error': 'Failed to generate audio. Please try again.'}), 500
         
         # Return audio file
         return send_file(
@@ -683,18 +771,63 @@ def text_to_speech():
         )
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_message = str(e)
+        
+        # Provide user-friendly error messages
+        if "403" in error_message or "Invalid response status" in error_message:
+            user_error = "The text-to-speech service is temporarily busy. Please try again in a few moments."
+        elif "timeout" in error_message.lower():
+            user_error = "Request timed out. Please try with shorter text or try again later."
+        elif "connection" in error_message.lower():
+            user_error = "Connection issue with the speech service. Please check your internet and try again."
+        else:
+            user_error = "Speech generation failed. Please try again with different text or voice."
+        
+        return jsonify({'error': user_error}), 500
 
 async def generate_speech(text, voice, rate):
     # Convert rate format for edge-tts compatibility
-    if rate == "0%":
+    if rate == "0%" or rate == "+0%":
         rate = "+0%"
-    communicate = edge_tts.Communicate(text, voice, rate=rate)
-    audio_data = b""
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_data += chunk["data"]
-    return audio_data
+    
+    try:
+        # Add retry logic and better connection handling
+        # Generate a unique connection ID for better tracking
+        connection_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=32))
+        logger.info(f"Starting speech generation with connection ID: {connection_id}")
+        
+        communicate = edge_tts.Communicate(text, voice, rate=rate)
+        audio_data = b""
+        
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_data += chunk["data"]
+        
+        if len(audio_data) == 0:
+            raise Exception("No audio data received from Edge TTS service")
+            
+        return audio_data
+        
+    except Exception as e:
+        # If Edge TTS fails, try alternative approach
+        if "403" in str(e) or "Invalid response status" in str(e):
+            # Try with different parameters
+            try:
+                import time
+                time.sleep(1)  # Brief delay before retry
+                
+                communicate = edge_tts.Communicate(text, voice)
+                audio_data = b""
+                
+                async for chunk in communicate.stream():
+                    if chunk["type"] == "audio":
+                        audio_data += chunk["data"]
+                
+                return audio_data
+            except Exception as retry_error:
+                raise Exception(f"Edge TTS service temporarily unavailable. Please try again in a few moments. Error: {str(retry_error)}")
+        else:
+            raise Exception(f"Speech generation failed: {str(e)}")
 
 @app.route('/api/voices', methods=['GET'])
 def get_voices():
@@ -727,11 +860,45 @@ def get_voices():
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    return jsonify({
-        'status': 'healthy',
-        'service': 'Edge TTS API',
-        'version': '1.0.0'
-    })
+    try:
+        # Test basic edge-tts availability
+        test_result = asyncio.run(test_edge_tts_service())
+        
+        return jsonify({
+            'status': 'healthy' if test_result else 'degraded',
+            'service': 'Edge TTS API by Umar',
+            'version': '1.0.0',
+            'edge_tts_available': test_result,
+            'timestamp': time.time()
+        })
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return jsonify({
+            'status': 'unhealthy',
+            'service': 'Edge TTS API by Umar',
+            'version': '1.0.0',
+            'error': str(e),
+            'timestamp': time.time()
+        }), 503
+
+async def test_edge_tts_service():
+    """Test if Edge TTS service is available"""
+    try:
+        # Quick test with minimal text
+        communicate = edge_tts.Communicate("Hi", "en-US-AriaNeural")
+        test_data = b""
+        
+        # Try to get at least some data
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                test_data += chunk["data"]
+                if len(test_data) > 1000:  # Just need some data to confirm it works
+                    break
+        
+        return len(test_data) > 0
+    except Exception as e:
+        logger.warning(f"Edge TTS service test failed: {str(e)}")
+        return False
 
 # For development
 if __name__ == '__main__':
