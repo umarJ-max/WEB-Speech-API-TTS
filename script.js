@@ -58,21 +58,28 @@ class TextToSpeechApp {
     }
 
     loadVoices() {
-        this.voices = this.synth.getVoices();
+        this.voices = speechSynthesis.getVoices();
+        this.populateVoiceSelect();
         
+        // If no voices found, try again after a short delay
         if (this.voices.length === 0) {
-            // Wait and try again (some browsers need time to load voices)
             setTimeout(() => {
-                this.voices = this.synth.getVoices();
+                this.voices = speechSynthesis.getVoices();
                 this.populateVoiceSelect();
             }, 100);
-        } else {
-            this.populateVoiceSelect();
         }
     }
 
     populateVoiceSelect() {
         this.voiceSelect.innerHTML = '';
+        
+        if (this.voices.length === 0) {
+            const option = document.createElement('option');
+            option.textContent = 'Loading voices...';
+            option.disabled = true;
+            this.voiceSelect.appendChild(option);
+            return;
+        }
         
         this.voices.forEach(voice => {
             const option = document.createElement('option');
