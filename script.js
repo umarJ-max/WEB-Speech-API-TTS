@@ -177,7 +177,7 @@ class TextToSpeechApp {
         this.currentUtterance.onend = () => {
             this.isPlaying = false;
             this.isPaused = false;
-            this.showStatus('Finished speaking', 'ready');
+            this.status.className = 'floating-status'; // Hide status
             this.hideProgress();
             this.updateUI();
             document.body.classList.remove('speaking');
@@ -222,7 +222,7 @@ class TextToSpeechApp {
         }
         this.isPlaying = false;
         this.isPaused = false;
-        this.showStatus('Ready', 'ready');
+        this.status.className = 'floating-status'; // Hide status
         this.hideProgress();
         this.updateUI();
         document.body.classList.remove('speaking');
@@ -303,8 +303,21 @@ class TextToSpeechApp {
     }
 
     showStatus(message, type = 'ready') {
+        // Only show important status messages (not "Ready" or "Finished speaking")
+        if (message === 'Ready' || message === 'Finished speaking') {
+            this.status.className = 'floating-status';
+            return;
+        }
+        
         this.status.textContent = message;
-        this.status.className = `status ${type}`;
+        this.status.className = `floating-status show ${type}`;
+        
+        // Auto hide after 3 seconds for non-error messages
+        if (type !== 'error' && type !== 'speaking') {
+            setTimeout(() => {
+                this.status.className = 'floating-status';
+            }, 3000);
+        }
     }
 
     showProgress() {

@@ -1,14 +1,11 @@
-<!D    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Umar TTS - Text to Speech</title>
-    <link rel="icon" type="image/png" href="Icon.png">
-    <link rel="apple-touch-icon" href="Icon.png">
-    <link rel="stylesheet" href="styles.css">PE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Umar's Text-to-Speech</title>
+    <title>Umar TTS - Text to Speech</title>
+    <link rel="icon" type="image/png" href="Icon.png">
+    <link rel="apple-touch-icon" href="Icon.png">
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,29 +16,27 @@
     <div class="app">
         <div class="floating-status" id="status">Ready</div>
         
-        <main class="main">
-            <div class="hero">
-                <h1 class="title">
-                    <span class="gradient-text">Umar</span> TTS
-                </h1>
-                <p class="subtitle">Transform text into speech with AI-powered voices</p>
-            </div>
+        <div class="container">
+            <div class="main-card">
+                <!-- Title Section -->
+                <div class="title-section">
+                    <h1><span class="brand">Umar</span> TTS</h1>
+                    <p class="subtitle">Transform text into speech with AI-powered voices</p>
+                </div>
 
-            <div class="card">
                 <!-- Text Input -->
-                <div class="input-container">
-                    <div class="input-wrapper">
+                <div class="input-section">
+                    <div class="textarea-container">
                         <textarea 
                             id="textInput" 
                             placeholder="Enter your text here..."
                             maxlength="5000"
-                            rows="6"
                         ></textarea>
-                        <div class="input-actions">
-                            <span class="char-indicator">
+                        <div class="textarea-footer">
+                            <span class="char-count">
                                 <span id="charCount">0</span>/5000
                             </span>
-                            <button id="clearBtn" class="clear-btn" title="Clear text">
+                            <button class="clear-btn" id="clearBtn" title="Clear text">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
@@ -52,60 +47,58 @@
                 <div class="controls-grid">
                     <div class="control-item">
                         <label>Voice</label>
-                        <select id="voiceSelect" class="modern-select">
+                        <select id="voiceSelect">
                             <option value="">Loading voices...</option>
                         </select>
                     </div>
-
                     <div class="control-item">
-                        <label>Speed <span class="value" id="rateValue">1.0x</span></label>
-                        <input type="range" id="rateRange" class="modern-slider" min="0.1" max="3" step="0.1" value="1">
+                        <label>Speed <span id="rateValue">1.0</span>x</label>
+                        <input type="range" id="rateRange" min="0.1" max="3" step="0.1" value="1">
                     </div>
-
                     <div class="control-item">
-                        <label>Pitch <span class="value" id="pitchValue">1.0</span></label>
-                        <input type="range" id="pitchRange" class="modern-slider" min="0" max="2" step="0.1" value="1">
+                        <label>Pitch <span id="pitchValue">1.0</span></label>
+                        <input type="range" id="pitchRange" min="0" max="2" step="0.1" value="1">
                     </div>
-
                     <div class="control-item">
-                        <label>Volume <span class="value" id="volumeValue">100%</span></label>
-                        <input type="range" id="volumeRange" class="modern-slider" min="0" max="1" step="0.1" value="1">
+                        <label>Volume <span id="volumeValue">100</span>%</label>
+                        <input type="range" id="volumeRange" min="0" max="1" step="0.1" value="1">
                     </div>
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="actions">
-                    <button id="playBtn" class="action-btn primary" disabled>
+                <div class="button-grid">
+                    <button id="playBtn" class="btn btn-primary" disabled>
                         <i class="fas fa-play"></i>
-                        <span>Speak</span>
+                        Speak
                     </button>
-                    <button id="pauseBtn" class="action-btn secondary" disabled>
+                    <button id="pauseBtn" class="btn btn-secondary" disabled>
                         <i class="fas fa-pause"></i>
-                        <span>Pause</span>
+                        Pause
                     </button>
-                    <button id="stopBtn" class="action-btn danger" disabled>
+                    <button id="stopBtn" class="btn btn-danger" disabled>
                         <i class="fas fa-stop"></i>
-                        <span>Stop</span>
+                        Stop
                     </button>
-                    <button id="quickTestBtn" class="action-btn outline">
+                    <button id="quickTestBtn" class="btn btn-outline">
                         <i class="fas fa-zap"></i>
-                        <span>Quick Test</span>
+                        Quick Test
                     </button>
                 </div>
 
-                <!-- Progress -->
-                <div class="progress-container" id="progressSection" style="display: none;">
+                <!-- Progress Bar -->
+                <div class="progress-section" id="progressSection" style="display: none;">
                     <div class="progress-bar">
                         <div class="progress-fill" id="progressFill"></div>
                     </div>
-                    <p class="progress-text" id="progressText">Speaking...</p>
+                    <div class="progress-text" id="progressText">Speaking...</div>
                 </div>
             </div>
-        </main>
+        </div>
 
-        <footer class="footer">
-            <p>Made with ❤️ by <strong>Umar</strong></p>
-        </footer>
+        <!-- Footer -->
+        <div class="footer">
+            <p>&copy; 2025 Created by <strong>Umar</strong></p>
+        </div>
     </div>
 
     <script src="script.js"></script>
