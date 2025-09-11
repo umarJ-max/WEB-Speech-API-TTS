@@ -174,7 +174,8 @@ body {
 /* Controls Grid */
 .controls-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
@@ -262,7 +263,8 @@ body {
 /* Actions */
 .actions {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
     gap: 1rem;
     margin-bottom: 2rem;
 }
@@ -391,11 +393,13 @@ body {
 
     .controls-grid {
         grid-template-columns: 1fr;
+        grid-template-rows: auto;
         gap: 1rem;
     }
 
     .actions {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
         gap: 0.75rem;
     }
 

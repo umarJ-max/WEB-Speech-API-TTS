@@ -47,39 +47,39 @@
                 <div class="controls-grid">
                     <div class="control-item">
                         <label>Voice</label>
-                        <select id="voiceSelect">
+                        <select id="voiceSelect" class="modern-select">
                             <option value="">Loading voices...</option>
                         </select>
                     </div>
                     <div class="control-item">
                         <label>Speed <span id="rateValue">1.0</span>x</label>
-                        <input type="range" id="rateRange" min="0.1" max="3" step="0.1" value="1">
+                        <input type="range" id="rateRange" class="modern-slider" min="0.1" max="3" step="0.1" value="1">
                     </div>
                     <div class="control-item">
                         <label>Pitch <span id="pitchValue">1.0</span></label>
-                        <input type="range" id="pitchRange" min="0" max="2" step="0.1" value="1">
+                        <input type="range" id="pitchRange" class="modern-slider" min="0" max="2" step="0.1" value="1">
                     </div>
                     <div class="control-item">
                         <label>Volume <span id="volumeValue">100</span>%</label>
-                        <input type="range" id="volumeRange" min="0" max="1" step="0.1" value="1">
+                        <input type="range" id="volumeRange" class="modern-slider" min="0" max="1" step="0.1" value="1">
                     </div>
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="button-grid">
-                    <button id="playBtn" class="btn btn-primary" disabled>
+                <div class="actions">
+                    <button id="playBtn" class="action-btn primary" disabled>
                         <i class="fas fa-play"></i>
                         Speak
                     </button>
-                    <button id="pauseBtn" class="btn btn-secondary" disabled>
+                    <button id="pauseBtn" class="action-btn secondary" disabled>
                         <i class="fas fa-pause"></i>
                         Pause
                     </button>
-                    <button id="stopBtn" class="btn btn-danger" disabled>
+                    <button id="stopBtn" class="action-btn danger" disabled>
                         <i class="fas fa-stop"></i>
                         Stop
                     </button>
-                    <button id="quickTestBtn" class="btn btn-outline">
+                    <button id="quickTestBtn" class="action-btn outline">
                         <i class="fas fa-zap"></i>
                         Quick Test
                     </button>
