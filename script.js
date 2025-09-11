@@ -35,7 +35,7 @@ class TextToSpeechApp {
         this.clearBtn = document.getElementById('clearBtn');
         
         // Progress elements
-        this.progressSection = document.getElementById('progressSection');
+        this.progressContainer = document.getElementById('progressContainer');
         this.progressFill = document.getElementById('progressFill');
         this.progressText = document.getElementById('progressText');
     }
@@ -321,7 +321,7 @@ class TextToSpeechApp {
     }
 
     showProgress() {
-        this.progressSection.style.display = 'block';
+        this.progressContainer.style.display = 'block';
         this.progressText.textContent = 'Speaking...';
         
         // Simulate progress (since we can't track actual progress easily)
@@ -349,7 +349,7 @@ class TextToSpeechApp {
     }
 
     hideProgress() {
-        this.progressSection.style.display = 'none';
+        this.progressContainer.style.display = 'none';
         this.progressFill.style.width = '0%';
     }
 

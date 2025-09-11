@@ -16,32 +16,26 @@
     <div class="app">
         <div class="floating-status" id="status">Ready</div>
         
-        <div class="container">
-            <div class="main-card">
-                <!-- Title Section -->
-                <div class="title-section">
-                    <h1><span class="brand">Umar</span> TTS</h1>
-                    <p class="subtitle">Transform text into speech with AI-powered voices</p>
-                </div>
+        <main class="main">
+            <!-- Title Section -->
+            <div class="hero">
+                <h1 class="title"><span class="brand">Umar</span> TTS</h1>
+                <p class="subtitle">Transform text into speech with AI-powered voices</p>
+            </div>
 
-                <!-- Text Input -->
-                <div class="input-section">
-                    <div class="textarea-container">
-                        <textarea 
-                            id="textInput" 
-                            placeholder="Enter your text here..."
-                            maxlength="5000"
-                        ></textarea>
-                        <div class="textarea-footer">
-                            <span class="char-count">
-                                <span id="charCount">0</span>/5000
-                            </span>
-                            <button class="clear-btn" id="clearBtn" title="Clear text">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
+            <!-- Text Input -->
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="textInput" 
+                        placeholder="Enter your text here..."
+                        maxlength="5000"
+                    ></textarea>
+                    <div class="char-counter">
+                        <span id="charCount">0</span>/5000
                     </div>
                 </div>
+            </div>
 
                 <!-- Controls Grid -->
                 <div class="controls-grid">
@@ -85,20 +79,19 @@
                     </button>
                 </div>
 
-                <!-- Progress Bar -->
-                <div class="progress-section" id="progressSection" style="display: none;">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
-                    <div class="progress-text" id="progressText">Speaking...</div>
+            <!-- Progress Bar -->
+            <div class="progress-container" id="progressContainer" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
                 </div>
+                <div class="progress-text" id="progressText">Speaking...</div>
             </div>
-        </div>
+        </main>
 
         <!-- Footer -->
-        <div class="footer">
+        <footer class="footer">
             <p>&copy; 2025 Created by <strong>Umar</strong></p>
-        </div>
+        </footer>
     </div>
 
     <script src="script.js"></script>
