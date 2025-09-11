@@ -198,6 +198,36 @@ body {
     align-items: center;
 }
 
+.voice-control {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.voice-control select {
+    flex: 1;
+}
+
+.refresh-btn {
+    padding: 0.875rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+}
+
+.refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    transform: rotate(180deg);
+}
+
 .value {
     color: #7c3aed;
     font-weight: 600;

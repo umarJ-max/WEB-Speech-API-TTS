@@ -41,9 +41,14 @@
                 <div class="controls-grid">
                     <div class="control-item">
                         <label>Voice</label>
-                        <select id="voiceSelect" class="modern-select">
-                            <option value="">Loading voices...</option>
-                        </select>
+                        <div class="voice-control">
+                            <select id="voiceSelect" class="modern-select">
+                                <option value="">Loading voices...</option>
+                            </select>
+                            <button id="refreshVoices" class="refresh-btn" title="Refresh voices">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="control-item">
                         <label>Speed <span id="rateValue">1.0</span>x</label>

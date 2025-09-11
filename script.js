@@ -32,6 +32,7 @@ class TextToSpeechApp {
         this.pauseBtn = document.getElementById('pauseBtn');
         this.stopBtn = document.getElementById('stopBtn');
         this.quickTestBtn = document.getElementById('quickTestBtn');
+        this.refreshVoicesBtn = document.getElementById('refreshVoices');
         this.clearBtn = document.getElementById('clearBtn');
         
         // Progress elements
@@ -55,12 +56,17 @@ class TextToSpeechApp {
         this.pauseBtn.addEventListener('click', () => this.pause());
         this.stopBtn.addEventListener('click', () => this.stop());
         this.quickTestBtn.addEventListener('click', () => this.quickTest());
+        this.refreshVoicesBtn.addEventListener('click', () => this.forceRefreshVoices());
         this.clearBtn.addEventListener('click', () => this.clearText());
         
-        // Voice loading
+        // Voice loading with multiple attempts
         if (speechSynthesis.onvoiceschanged !== undefined) {
             speechSynthesis.onvoiceschanged = () => this.loadVoices();
         }
+        
+        // Force voice loading on page interaction
+        document.addEventListener('click', () => this.ensureVoicesLoaded(), { once: true });
+        document.addEventListener('touchstart', () => this.ensureVoicesLoaded(), { once: true });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
@@ -68,7 +74,16 @@ class TextToSpeechApp {
 
     loadVoices() {
         this.voices = this.synth.getVoices();
-        this.populateVoiceSelect();
+        
+        // If no voices loaded yet, try again after a short delay
+        if (this.voices.length === 0) {
+            setTimeout(() => {
+                this.voices = this.synth.getVoices();
+                this.populateVoiceSelect();
+            }, 100);
+        } else {
+            this.populateVoiceSelect();
+        }
     }
 
     populateVoiceSelect() {
@@ -76,8 +91,18 @@ class TextToSpeechApp {
         
         if (this.voices.length === 0) {
             const option = document.createElement('option');
-            option.textContent = 'Loading voices...';
+            option.textContent = 'No voices available - Please refresh page';
+            option.disabled = true;
             this.voiceSelect.appendChild(option);
+            
+            // Try to trigger voice loading
+            console.log('Attempting to load voices...');
+            if (this.synth.getVoices().length === 0) {
+                // Force voice loading by creating a dummy utterance
+                const dummy = new SpeechSynthesisUtterance('');
+                this.synth.speak(dummy);
+                this.synth.cancel();
+            }
             return;
         }
 
@@ -108,6 +133,53 @@ class TextToSpeechApp {
             
             this.voiceSelect.appendChild(optgroup);
         });
+        
+        console.log(`Loaded ${this.voices.length} voices`);
+    }
+
+    ensureVoicesLoaded() {
+        if (this.voices.length === 0) {
+            console.log('Force loading voices on user interaction...');
+            this.loadVoices();
+            
+            // Try again after a delay if still no voices
+            setTimeout(() => {
+                if (this.voices.length === 0) {
+                    this.loadVoices();
+                }
+            }, 500);
+        }
+    }
+
+    forceRefreshVoices() {
+        console.log('Manually refreshing voices...');
+        
+        // Animate refresh button
+        this.refreshVoicesBtn.style.transform = 'rotate(360deg)';
+        setTimeout(() => {
+            this.refreshVoicesBtn.style.transform = '';
+        }, 500);
+        
+        // Clear current voices
+        this.voices = [];
+        
+        // Try multiple methods to load voices
+        this.loadVoices();
+        
+        // Force trigger voices changed event
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+            
+            // Create a dummy utterance to trigger voice loading
+            const dummy = new SpeechSynthesisUtterance('test');
+            window.speechSynthesis.speak(dummy);
+            window.speechSynthesis.cancel();
+            
+            // Try loading again after a short delay
+            setTimeout(() => {
+                this.loadVoices();
+            }, 200);
+        }
     }
 
     getLanguageName(code) {
