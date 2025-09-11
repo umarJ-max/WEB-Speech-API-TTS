@@ -119,23 +119,54 @@ class TextToSpeechApp {
             return;
         }
 
+        // Detect mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+
         // Add default option
         const defaultOption = document.createElement('option');
         defaultOption.value = '';
-        defaultOption.textContent = 'System Default';
+        defaultOption.textContent = isMobile ? 'Device Default (Recommended)' : 'System Default';
         this.voiceSelect.appendChild(defaultOption);
 
-        // Add all voices with better mobile compatibility
-        this.voices.forEach((voice, index) => {
+        // Filter voices for mobile compatibility
+        let voicesToShow = this.voices;
+        if (isMobile) {
+            // Test which voices actually work on mobile
+            this.testMobileVoices();
+            
+            // For mobile, prioritize working voices
+            const workingVoices = this.voices.filter(voice => {
+                // Keep default voices and local voices
+                if (voice.default || voice.localService) return true;
+                
+                // Keep commonly working voices on mobile
+                const name = voice.name.toLowerCase();
+                return name.includes('google') || 
+                       name.includes('android') ||
+                       name.includes('apple') ||
+                       name.includes('samsung') ||
+                       voice.lang.startsWith('en');
+            });
+            
+            voicesToShow = workingVoices.length > 0 ? workingVoices : this.voices;
+            console.log(`Mobile: Showing ${voicesToShow.length} out of ${this.voices.length} voices`);
+        }
+
+        // Add filtered voices
+        voicesToShow.forEach((voice, index) => {
             const option = document.createElement('option');
-            option.value = index;
+            option.value = this.voices.indexOf(voice); // Use original index
             
             // Shorter names for mobile
             let displayName = voice.name;
-            if (window.innerWidth <= 480) {
-                displayName = voice.name.length > 25 
-                    ? voice.name.substring(0, 25) + '...' 
+            if (isMobile) {
+                displayName = voice.name.length > 20 
+                    ? voice.name.substring(0, 20) + '...' 
                     : voice.name;
+                
+                // Add indicators for mobile
+                if (voice.localService) displayName += ' ✓';
+                if (voice.default) displayName += ' (Default)';
             }
             
             option.textContent = `${displayName} (${voice.lang})`;
@@ -159,8 +190,29 @@ class TextToSpeechApp {
                 this.showStatus(`Voice selected: ${selectedVoice.name}`, 'ready');
             }
         });
+
+        // Add mobile-specific tips and warnings
+        if (isMobile) {
+            if (voicesToShow.length <= 2) {
+                const warningOption = document.createElement('option');
+                warningOption.disabled = true;
+                warningOption.textContent = '--- Limited voices on mobile ---';
+                this.voiceSelect.appendChild(warningOption);
+            }
+            
+            // Add mobile tips
+            const tipsOption = document.createElement('option');
+            tipsOption.disabled = true;
+            tipsOption.textContent = '💡 Tip: Default voice works best on mobile';
+            this.voiceSelect.appendChild(tipsOption);
+            
+            // Show initial status for mobile users
+            setTimeout(() => {
+                this.showStatus('Mobile: Use "Device Default" for best results', 'ready');
+            }, 2000);
+        }
         
-        console.log(`Loaded ${this.voices.length} voices`);
+        console.log(`Loaded ${this.voices.length} voices (Mobile: ${isMobile ? voicesToShow.length : 'N/A'} shown)`);
     }
 
     testSelectedVoice() {
@@ -175,6 +227,37 @@ class TextToSpeechApp {
             this.synth.cancel(); // Cancel any ongoing speech
             this.synth.speak(testUtterance);
         }
+    }
+
+    testMobileVoices() {
+        // Test voices silently to see which ones actually work on mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (!isMobile) return;
+        
+        console.log('Testing mobile voice compatibility...');
+        
+        this.workingVoices = new Set();
+        
+        // Test a few voices silently
+        this.voices.slice(0, 5).forEach((voice, index) => {
+            setTimeout(() => {
+                const testUtterance = new SpeechSynthesisUtterance('');
+                testUtterance.voice = voice;
+                testUtterance.volume = 0; // Silent test
+                testUtterance.rate = 10; // Very fast
+                
+                testUtterance.onstart = () => {
+                    this.workingVoices.add(voice.name);
+                    console.log('Working voice found:', voice.name);
+                };
+                
+                testUtterance.onerror = () => {
+                    console.log('Non-working voice:', voice.name);
+                };
+                
+                this.synth.speak(testUtterance);
+            }, index * 100);
+        });
     }
 
 
@@ -202,27 +285,53 @@ class TextToSpeechApp {
             // Create new utterance
             this.currentUtterance = new SpeechSynthesisUtterance(text);
             
-            // Set voice if selected - enhanced for mobile
+            // Enhanced mobile voice handling
             const selectedVoiceIndex = this.voiceSelect.value;
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
             if (selectedVoiceIndex !== '' && this.voices[selectedVoiceIndex]) {
-                this.currentUtterance.voice = this.voices[selectedVoiceIndex];
-                // Force voice setting on mobile by setting it multiple times
-                setTimeout(() => {
-                    if (this.currentUtterance && this.voices[selectedVoiceIndex]) {
-                        this.currentUtterance.voice = this.voices[selectedVoiceIndex];
+                const selectedVoice = this.voices[selectedVoiceIndex];
+                
+                // Mobile-specific voice setting with validation
+                if (isMobile) {
+                    // Check if voice is likely to work on mobile
+                    const voiceName = selectedVoice.name.toLowerCase();
+                    const isLikelyWorking = selectedVoice.localService || 
+                                          selectedVoice.default ||
+                                          voiceName.includes('google') ||
+                                          voiceName.includes('android') ||
+                                          voiceName.includes('apple') ||
+                                          selectedVoice.lang.startsWith('en');
+                    
+                    if (isLikelyWorking) {
+                        this.currentUtterance.voice = selectedVoice;
+                        this.currentUtterance.lang = selectedVoice.lang;
+                        this.currentUtterance.voiceURI = selectedVoice.voiceURI;
+                        
+                        // Force voice setting multiple times for mobile browsers
+                        setTimeout(() => {
+                            if (this.currentUtterance) {
+                                this.currentUtterance.voice = selectedVoice;
+                            }
+                        }, 10);
+                        
+                        console.log('Mobile: Using voice:', selectedVoice.name);
+                    } else {
+                        // Fallback to default voice on mobile for problematic voices
+                        console.log('Mobile: Falling back to default voice for:', selectedVoice.name);
+                        this.showStatus('Using default voice for better mobile compatibility', 'ready');
                     }
-                }, 10);
+                } else {
+                    // Desktop - use voice normally
+                    this.currentUtterance.voice = selectedVoice;
+                    this.currentUtterance.lang = selectedVoice.lang;
+                }
             }
 
             // Set parameters
             this.currentUtterance.rate = parseFloat(this.rateRange.value);
             this.currentUtterance.pitch = parseFloat(this.pitchRange.value);
             this.currentUtterance.volume = parseFloat(this.volumeRange.value);
-            
-            // Additional mobile-specific settings
-            this.currentUtterance.lang = selectedVoiceIndex !== '' && this.voices[selectedVoiceIndex] 
-                ? this.voices[selectedVoiceIndex].lang 
-                : 'en-US';
 
             // Set event handlers
             this.currentUtterance.onstart = () => {
@@ -244,7 +353,25 @@ class TextToSpeechApp {
             this.currentUtterance.onerror = (event) => {
                 this.isPlaying = false;
                 this.isPaused = false;
-                this.showStatus(`Speech error: ${event.error}`, 'error');
+                
+                // Handle mobile-specific voice errors
+                if (isMobile && event.error === 'voice-unavailable') {
+                    this.showStatus('Voice not available on mobile, trying default...', 'error');
+                    
+                    // Retry with default voice
+                    setTimeout(() => {
+                        const retryUtterance = new SpeechSynthesisUtterance(text);
+                        retryUtterance.rate = parseFloat(this.rateRange.value);
+                        retryUtterance.pitch = parseFloat(this.pitchRange.value);
+                        retryUtterance.volume = parseFloat(this.volumeRange.value);
+                        
+                        this.synth.speak(retryUtterance);
+                        console.log('Retrying with default voice');
+                    }, 500);
+                } else {
+                    this.showStatus(`Speech error: ${event.error}`, 'error');
+                }
+                
                 this.hideProgress();
                 this.updateUI();
             };
