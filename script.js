@@ -38,7 +38,6 @@ class TextToSpeechApp {
         this.pauseBtn = document.getElementById('pauseBtn');
         this.stopBtn = document.getElementById('stopBtn');
         this.quickTestBtn = document.getElementById('quickTestBtn');
-        this.refreshVoicesBtn = document.getElementById('refreshVoices');
         
         // Progress elements
         this.progressContainer = document.getElementById('progressContainer');
@@ -63,7 +62,6 @@ class TextToSpeechApp {
         this.pauseBtn.addEventListener('click', () => this.togglePause());
         this.stopBtn.addEventListener('click', () => this.stop());
         this.quickTestBtn.addEventListener('click', () => this.quickTest());
-        this.refreshVoicesBtn.addEventListener('click', () => this.refreshVoices());
         
         // Voice loading
         if ('onvoiceschanged' in speechSynthesis) {
@@ -72,19 +70,20 @@ class TextToSpeechApp {
         
         // Load voices on user interaction (required by some browsers)
         document.addEventListener('click', this.loadVoices.bind(this), { once: true });
+        document.addEventListener('touchstart', this.loadVoices.bind(this), { once: true });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
+
+        // Mobile optimizations
+        this.addMobileOptimizations();
     }
 
     loadVoices() {
-        // Stop any current speech before loading voices
-        this.synth.cancel();
-        
         this.voices = this.synth.getVoices();
         
         if (this.voices.length === 0) {
-            // Wait a bit and try again (some browsers need time)
+            // Wait and try again (some browsers need time to load voices)
             setTimeout(() => {
                 this.voices = this.synth.getVoices();
                 this.populateVoiceSelect();
@@ -108,35 +107,36 @@ class TextToSpeechApp {
         // Add default option
         const defaultOption = document.createElement('option');
         defaultOption.value = '';
-        defaultOption.textContent = 'Default Voice';
+        defaultOption.textContent = 'System Default';
         this.voiceSelect.appendChild(defaultOption);
 
-        // Add all available voices
-        this.voices.forEach((voice, index) => {
+        // Filter and add voices, prioritizing English voices
+        const englishVoices = this.voices.filter(voice => voice.lang.startsWith('en'));
+        const otherVoices = this.voices.filter(voice => !voice.lang.startsWith('en'));
+
+        // Add English voices first
+        if (englishVoices.length > 0) {
+            englishVoices.forEach((voice, originalIndex) => {
+                const option = document.createElement('option');
+                option.value = this.voices.indexOf(voice);
+                option.textContent = `${voice.name} (${voice.lang})`;
+                if (voice.default) option.selected = true;
+                this.voiceSelect.appendChild(option);
+            });
+        }
+
+        // Add other voices
+        otherVoices.forEach((voice, originalIndex) => {
             const option = document.createElement('option');
-            option.value = index;
+            option.value = this.voices.indexOf(voice);
             option.textContent = `${voice.name} (${voice.lang})`;
             this.voiceSelect.appendChild(option);
         });
         
-        this.showStatus(`${this.voices.length} voices loaded`, 'ready');
+        console.log(`Loaded ${this.voices.length} voices`);
     }
 
-    refreshVoices() {
-        // Animate refresh button
-        this.refreshVoicesBtn.style.transform = 'rotate(360deg)';
-        setTimeout(() => {
-            this.refreshVoicesBtn.style.transform = '';
-        }, 300);
-        
-        // Force reload voices
-        this.voices = [];
-        this.synth.cancel();
-        this.loadVoices();
-        
-        // Try again after a delay
-        setTimeout(() => this.loadVoices(), 200);
-    }
+
 
 
 
@@ -391,6 +391,53 @@ class TextToSpeechApp {
                 </div>
             </div>
         `;
+    }
+
+    addMobileOptimizations() {
+        // Prevent zoom on input focus for iOS
+        const viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport) {
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+        } else {
+            const newViewport = document.createElement('meta');
+            newViewport.name = 'viewport';
+            newViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+            document.head.appendChild(newViewport);
+        }
+
+        // Add touch feedback for buttons
+        const buttons = document.querySelectorAll('.action-btn');
+        buttons.forEach(button => {
+            button.addEventListener('touchstart', () => {
+                button.style.transform = 'scale(0.95)';
+            }, { passive: true });
+            
+            button.addEventListener('touchend', () => {
+                setTimeout(() => {
+                    button.style.transform = '';
+                }, 100);
+            }, { passive: true });
+        });
+
+        // Improve textarea experience on mobile
+        this.textInput.addEventListener('focus', () => {
+            // Scroll to textarea when focused on mobile
+            if (window.innerWidth <= 768) {
+                setTimeout(() => {
+                    this.textInput.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                }, 300);
+            }
+        });
+
+        // Handle orientation changes
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                this.updateUI();
+            }, 100);
+        });
     }
 }
 
