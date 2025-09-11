@@ -390,12 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize the app
     new TextToSpeechApp();
-    
-    // Add feature card animation delays
-    const featureCards = document.querySelectorAll('.feature-card');
-    featureCards.forEach((card, index) => {
-        card.style.setProperty('--delay', index);
-    });
 });
 
 // Add some utility functions
