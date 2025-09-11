@@ -148,13 +148,15 @@ class TextToSpeechApp {
             this.voiceSelect.appendChild(option);
         });
         
-        // Add change listener for immediate voice testing
+        // Add change listener for voice selection (without auto-testing)
         this.voiceSelect.addEventListener('change', () => {
             const selectedIndex = this.voiceSelect.value;
             if (selectedIndex !== '' && this.voices[selectedIndex]) {
-                console.log('Selected voice:', this.voices[selectedIndex].name, this.voices[selectedIndex].lang);
-                // Quick test for mobile voice switching
-                this.testSelectedVoice();
+                const selectedVoice = this.voices[selectedIndex];
+                console.log('Voice changed to:', selectedVoice.name, selectedVoice.lang);
+                
+                // Just show status, don't auto-test to avoid sudden speech
+                this.showStatus(`Voice selected: ${selectedVoice.name}`, 'ready');
             }
         });
         
@@ -184,6 +186,12 @@ class TextToSpeechApp {
         
         if (!text) {
             this.showStatus('Please enter some text to speak', 'error');
+            return;
+        }
+
+        // Prevent multiple clicks
+        if (this.isPlaying) {
+            this.showStatus('Speech is already in progress, please wait...', 'error');
             return;
         }
 
@@ -220,7 +228,7 @@ class TextToSpeechApp {
             this.currentUtterance.onstart = () => {
                 this.isPlaying = true;
                 this.isPaused = false;
-                this.showStatus('Speaking...', 'speaking');
+                this.showStatus('Speaking... Please wait, do not press again!', 'speaking');
                 this.showProgress();
                 this.updateUI();
             };
@@ -356,14 +364,17 @@ class TextToSpeechApp {
         
         // Update button text based on state
         if (this.isPlaying && !this.isPaused) {
-            this.playBtn.innerHTML = '<i class="fas fa-volume-up"></i>Speaking...';
+            this.playBtn.innerHTML = '<i class="fas fa-volume-up"></i>Speaking... Please Wait';
             this.pauseBtn.innerHTML = '<i class="fas fa-pause"></i>Pause';
+            this.playBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
         } else if (this.isPaused) {
-            this.playBtn.innerHTML = '<i class="fas fa-volume-up"></i>Speaking...';
+            this.playBtn.innerHTML = '<i class="fas fa-volume-up"></i>Paused';
             this.pauseBtn.innerHTML = '<i class="fas fa-play"></i>Resume';
+            this.playBtn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
         } else {
             this.playBtn.innerHTML = '<i class="fas fa-play"></i>Speak';
             this.pauseBtn.innerHTML = '<i class="fas fa-pause"></i>Pause';
+            this.playBtn.style.background = ''; // Reset to CSS default
         }
     }
 

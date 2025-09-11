@@ -75,8 +75,54 @@ body {
 /* Hero Section */
 .hero {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     width: 100%;
+}
+
+/* Instructions */
+.instructions {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+    text-align: left;
+}
+
+.instructions h3 {
+    color: #7c3aed;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    text-align: center;
+}
+
+.instructions ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.instructions li {
+    padding: 0.5rem 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.instructions li:last-child {
+    border-bottom: none;
+}
+
+.instructions li:hover {
+    color: #ffffff;
+    transform: translateX(3px);
+}
+
+.instructions strong {
+    color: #ec4899;
 }
 
 .title {
@@ -471,6 +517,21 @@ body {
 
     .hero {
         margin-bottom: 1rem;
+    }
+
+    .instructions {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .instructions h3 {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .instructions li {
+        font-size: 0.85rem;
+        padding: 0.4rem 0;
     }
 
     .input-container {
