@@ -1,221 +1,135 @@
-# Edge-TTS Python Application for Vercel
+# Umar's Text-to-Speech Web Application
 
-A modern Text-to-Speech application using Microsoft Edge's TTS service, built with Python Flask and deployable on Vercel.
+A modern, responsive Text-to-Speech web application built with HTML, CSS, and JavaScript using the Web Speech API.
 
 ## 🚀 Features
 
-- **High-Quality Speech Synthesis**: Uses Microsoft Edge's TTS engine
-- **Multiple Voices**: Support for 100+ voices in different languages
-- **Customizable Speech**: Adjust rate, pitch, and voice
-- **Web Interface**: Beautiful, responsive web UI
-- **REST API**: Easy-to-use JSON API endpoints
-- **Vercel Ready**: Optimized for serverless deployment
+- **🎙️ Natural Speech Synthesis** - Convert text to speech using browser's built-in voices
+- **🌍 Multi-Language Support** - Support for multiple languages and accents
+- **🎛️ Advanced Controls** - Adjust speech rate, pitch, and volume
+- **⚡ Quick Test** - Test the service with sample text
+- **📱 Responsive Design** - Works perfectly on desktop, tablet, and mobile
+- **⌨️ Keyboard Shortcuts** - Control playback with keyboard
+- **🎨 Modern UI** - Beautiful gradient design with smooth animations
 
-## 🎯 Live Demo
+## 🛠️ Technologies Used
 
-Access the application at your Vercel deployment URL after deployment.
+- **HTML5** - Semantic markup and structure
+- **CSS3** - Modern styling with gradients, animations, and responsive design
+- **JavaScript ES6+** - Web Speech API integration and interactive functionality
+- **Web Speech API** - Browser's native text-to-speech capabilities
 
-## 📋 API Endpoints
+## 📋 Browser Support
 
-### 1. Web Interface
-- **GET** `/` - Interactive web interface
+- ✅ Chrome 33+
+- ✅ Firefox 49+
+- ✅ Safari 7+
+- ✅ Edge 14+
+- ❌ Internet Explorer (not supported)
 
-### 2. Generate Speech
-- **POST** `/api/tts`
-- **Body**: 
-```json
-{
-  "text": "Hello, world!",
-  "voice": "en-US-AriaNeural",
-  "rate": "medium",
-  "pitch": "medium"
-}
-```
-- **Response**: Audio file (MP3)
+## 🎮 How to Use
 
-### 3. List Available Voices
-- **GET** `/api/voices`
-- **Response**: JSON array of available voices
+1. **Enter Text** - Type or paste your text in the textarea (max 5000 characters)
+2. **Select Voice** - Choose from available system voices grouped by language
+3. **Adjust Settings** - Fine-tune speed (0.1x - 3x), pitch (0-2), and volume (0-100%)
+4. **Control Playback** - Use Play, Pause, and Stop buttons
+5. **Quick Test** - Click "Quick Test" to test with sample text
 
-### 4. Health Check
-- **GET** `/api/health`
-- **Response**: Service status
+## ⌨️ Keyboard Shortcuts
 
-## 🛠️ Local Development
+- **Spacebar** - Play/Pause (when not focused on textarea)
+- **Escape** - Stop playback
+- **Ctrl + Enter** - Start speaking
 
-### Prerequisites
-- Python 3.8+
-- pip
+## 🚀 Getting Started
 
-### Setup
-1. Clone or download the project
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. Run the application:
-```bash
-python api/index.py
-```
-
-4. Open http://localhost:5000 in your browser
-
-## 🚀 Deploy to Vercel
-
-### Method 1: Vercel CLI
-1. Install Vercel CLI:
-```bash
-npm i -g vercel
-```
-
-2. Deploy:
-```bash
-vercel
-```
-
-### Method 2: Git Integration
-1. Push code to GitHub/GitLab/Bitbucket
-2. Connect repository to Vercel
-3. Deploy automatically
-
-### Method 3: Drag & Drop
-1. Zip the project folder
-2. Go to [vercel.com](https://vercel.com)
-3. Drag and drop the zip file
-
-## 🎛️ Configuration
-
-### Environment Variables (Optional)
-You can set these in Vercel dashboard:
-- `FLASK_ENV`: Set to `production` for production deployment
-
-### Voice Options
-Popular voices included:
-- **English (US)**: Aria, Davis, Guy, Jenny
-- **English (UK)**: Libby, Maisie
-- **English (AU)**: Natasha
-- **Spanish**: Elvira
-- **French**: Denise
-- **German**: Katja
-- **Italian**: Elsa
-- **Japanese**: Nanami
-- **Korean**: SunHi
-- **Chinese**: Xiaoxiao
-
-### Speech Parameters
-- **Rate**: x-slow, slow, medium, fast, x-fast
-- **Pitch**: x-low, low, medium, high, x-high
+1. Clone or download this repository
+2. Open `index.html` in a modern web browser
+3. Allow microphone permissions if prompted (for better voice quality)
+4. Start converting text to speech!
 
 ## 📁 Project Structure
 
 ```
 text-to-speech/
-├── api/
-│   └── index.py          # Main Flask application
-├── requirements.txt      # Python dependencies
-├── vercel.json          # Vercel configuration
-└── README.md           # This file
+├── index.html          # Main HTML file
+├── styles.css          # CSS styling
+├── script.js           # JavaScript functionality
+└── README.md          # Project documentation
 ```
 
-## 🔧 Technical Details
+## 🎨 Features Breakdown
 
-- **Framework**: Flask (Python)
-- **TTS Engine**: edge-tts (Microsoft Edge TTS)
-- **Deployment**: Vercel Serverless Functions
-- **Audio Format**: MP3
-- **Frontend**: Vanilla HTML/CSS/JavaScript
+### Voice Controls
+- **Rate Control** - Adjust speaking speed from 0.1x to 3x normal speed
+- **Pitch Control** - Modify voice pitch from 0 to 2
+- **Volume Control** - Set volume from 0% to 100%
 
-## 🌟 Usage Examples
+### User Interface
+- **Real-time Character Count** - Track text length with color coding
+- **Progress Visualization** - See speaking progress with animated progress bar
+- **Status Indicators** - Clear feedback on current operation status
+- **Responsive Design** - Optimized for all screen sizes
 
-### cURL Examples
+### Advanced Features
+- **Voice Grouping** - Voices organized by language for easy selection
+- **Error Handling** - Graceful error handling with user-friendly messages
+- **Quick Test Mode** - Test functionality without losing your main text
+- **Auto-pause/Resume** - Intelligent handling of tab switching
 
-#### Generate Speech
-```bash
-curl -X POST \
-  https://your-app.vercel.app/api/tts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "Hello from Edge TTS!",
-    "voice": "en-US-AriaNeural",
-    "rate": "medium",
-    "pitch": "medium"
-  }' \
-  --output speech.mp3
-```
+## 🎯 Use Cases
 
-#### Get Voices
-```bash
-curl https://your-app.vercel.app/api/voices
-```
+- **Accessibility** - Help users with reading difficulties
+- **Learning** - Language learning and pronunciation practice
+- **Productivity** - Listen to text while multitasking
+- **Content Creation** - Preview how text sounds when spoken
+- **Testing** - Test speech synthesis for other applications
 
-### JavaScript Example
-```javascript
-// Generate speech
-const response = await fetch('/api/tts', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    text: 'Hello, world!',
-    voice: 'en-US-AriaNeural',
-    rate: 'medium',
-    pitch: 'medium'
-  })
-});
+## 🔧 Customization
 
-const audioBlob = await response.blob();
-const audioUrl = URL.createObjectURL(audioBlob);
+The application is built with modular CSS and JavaScript, making it easy to customize:
 
-// Play audio
-const audio = new Audio(audioUrl);
-audio.play();
-```
+- **Colors** - Modify the gradient colors in `styles.css`
+- **Fonts** - Change the font family (currently using Inter)
+- **Layout** - Adjust spacing and sizing variables
+- **Features** - Add or remove functionality in `script.js`
 
-### Python Example
-```python
-import requests
+## 🐛 Troubleshooting
 
-# Generate speech
-response = requests.post('https://your-app.vercel.app/api/tts', 
-  json={
-    'text': 'Hello from Python!',
-    'voice': 'en-US-AriaNeural',
-    'rate': 'medium',
-    'pitch': 'medium'
-  }
-)
+### No Voices Available
+- Ensure you're using a supported browser
+- Try refreshing the page
+- Check if speech synthesis is enabled in browser settings
 
-# Save audio file
-with open('speech.mp3', 'wb') as f:
-    f.write(response.content)
-```
+### Speech Not Working
+- Verify browser permissions for audio
+- Check if volume is turned up
+- Try a different voice or language
+
+### Performance Issues
+- Limit text length for very long documents
+- Close other tabs using audio
+- Try a different browser
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+## 👨‍💻 Created By
+
+**Umar** - A passionate developer creating modern web applications
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test locally
-5. Submit a pull request
+Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
 
-## 📝 License
+## 📞 Support
 
-This project is open source and available under the MIT License.
-
-## 🆘 Support
-
-- Create an issue for bugs or feature requests
-- Check existing issues before creating new ones
-- Provide detailed information for faster resolution
-
-## 🔗 Links
-
-- [Edge-TTS GitHub](https://github.com/rany2/edge-tts)
-- [Vercel Documentation](https://vercel.com/docs)
-- [Flask Documentation](https://flask.palletsprojects.com/)
+If you encounter any issues or have questions:
+1. Check the troubleshooting section above
+2. Ensure your browser supports the Web Speech API
+3. Try the application in a different browser
 
 ---
 
-**Happy Speech Synthesis! 🎤✨**
+⭐ **Star this repository if you find it helpful!** ⭐
