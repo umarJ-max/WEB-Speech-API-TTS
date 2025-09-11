@@ -63,14 +63,19 @@ class TextToSpeechApp {
         this.stopBtn.addEventListener('click', () => this.stop());
         this.quickTestBtn.addEventListener('click', () => this.quickTest());
         
-        // Voice loading
+        // Voice loading - enhanced for mobile
         if ('onvoiceschanged' in speechSynthesis) {
             speechSynthesis.onvoiceschanged = () => this.loadVoices();
         }
         
-        // Load voices on user interaction (required by some browsers)
+        // Load voices on user interaction (required by mobile browsers)
         document.addEventListener('click', this.loadVoices.bind(this), { once: true });
         document.addEventListener('touchstart', this.loadVoices.bind(this), { once: true });
+        
+        // Force voice loading after a delay (mobile browsers need this)
+        setTimeout(() => this.loadVoices(), 500);
+        setTimeout(() => this.loadVoices(), 1000);
+        setTimeout(() => this.loadVoices(), 2000);
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
@@ -80,14 +85,24 @@ class TextToSpeechApp {
     }
 
     loadVoices() {
+        // Force cancel any pending speech to refresh voices
+        this.synth.cancel();
+        
         this.voices = this.synth.getVoices();
         
         if (this.voices.length === 0) {
-            // Wait and try again (some browsers need time to load voices)
+            // Create a dummy utterance to trigger voice loading on mobile
+            const dummy = new SpeechSynthesisUtterance('');
+            this.synth.speak(dummy);
+            this.synth.cancel();
+            
+            // Wait and try again (mobile browsers need more time)
             setTimeout(() => {
                 this.voices = this.synth.getVoices();
-                this.populateVoiceSelect();
-            }, 100);
+                if (this.voices.length > 0) {
+                    this.populateVoiceSelect();
+                }
+            }, 200);
         } else {
             this.populateVoiceSelect();
         }
@@ -110,30 +125,54 @@ class TextToSpeechApp {
         defaultOption.textContent = 'System Default';
         this.voiceSelect.appendChild(defaultOption);
 
-        // Filter and add voices, prioritizing English voices
-        const englishVoices = this.voices.filter(voice => voice.lang.startsWith('en'));
-        const otherVoices = this.voices.filter(voice => !voice.lang.startsWith('en'));
-
-        // Add English voices first
-        if (englishVoices.length > 0) {
-            englishVoices.forEach((voice, originalIndex) => {
-                const option = document.createElement('option');
-                option.value = this.voices.indexOf(voice);
-                option.textContent = `${voice.name} (${voice.lang})`;
-                if (voice.default) option.selected = true;
-                this.voiceSelect.appendChild(option);
-            });
-        }
-
-        // Add other voices
-        otherVoices.forEach((voice, originalIndex) => {
+        // Add all voices with better mobile compatibility
+        this.voices.forEach((voice, index) => {
             const option = document.createElement('option');
-            option.value = this.voices.indexOf(voice);
-            option.textContent = `${voice.name} (${voice.lang})`;
+            option.value = index;
+            
+            // Shorter names for mobile
+            let displayName = voice.name;
+            if (window.innerWidth <= 480) {
+                displayName = voice.name.length > 25 
+                    ? voice.name.substring(0, 25) + '...' 
+                    : voice.name;
+            }
+            
+            option.textContent = `${displayName} (${voice.lang})`;
+            
+            // Mark default voice
+            if (voice.default) {
+                option.selected = true;
+            }
+            
             this.voiceSelect.appendChild(option);
         });
         
+        // Add change listener for immediate voice testing
+        this.voiceSelect.addEventListener('change', () => {
+            const selectedIndex = this.voiceSelect.value;
+            if (selectedIndex !== '' && this.voices[selectedIndex]) {
+                console.log('Selected voice:', this.voices[selectedIndex].name, this.voices[selectedIndex].lang);
+                // Quick test for mobile voice switching
+                this.testSelectedVoice();
+            }
+        });
+        
         console.log(`Loaded ${this.voices.length} voices`);
+    }
+
+    testSelectedVoice() {
+        // Quick voice test for mobile debugging
+        const selectedIndex = this.voiceSelect.value;
+        if (selectedIndex !== '' && this.voices[selectedIndex]) {
+            const testUtterance = new SpeechSynthesisUtterance('Test');
+            testUtterance.voice = this.voices[selectedIndex];
+            testUtterance.volume = 0.1; // Low volume for testing
+            testUtterance.rate = 1.5; // Fast for quick test
+            
+            this.synth.cancel(); // Cancel any ongoing speech
+            this.synth.speak(testUtterance);
+        }
     }
 
 
@@ -155,16 +194,27 @@ class TextToSpeechApp {
             // Create new utterance
             this.currentUtterance = new SpeechSynthesisUtterance(text);
             
-            // Set voice if selected
+            // Set voice if selected - enhanced for mobile
             const selectedVoiceIndex = this.voiceSelect.value;
-            if (selectedVoiceIndex && this.voices[selectedVoiceIndex]) {
+            if (selectedVoiceIndex !== '' && this.voices[selectedVoiceIndex]) {
                 this.currentUtterance.voice = this.voices[selectedVoiceIndex];
+                // Force voice setting on mobile by setting it multiple times
+                setTimeout(() => {
+                    if (this.currentUtterance && this.voices[selectedVoiceIndex]) {
+                        this.currentUtterance.voice = this.voices[selectedVoiceIndex];
+                    }
+                }, 10);
             }
 
             // Set parameters
             this.currentUtterance.rate = parseFloat(this.rateRange.value);
             this.currentUtterance.pitch = parseFloat(this.pitchRange.value);
             this.currentUtterance.volume = parseFloat(this.volumeRange.value);
+            
+            // Additional mobile-specific settings
+            this.currentUtterance.lang = selectedVoiceIndex !== '' && this.voices[selectedVoiceIndex] 
+                ? this.voices[selectedVoiceIndex].lang 
+                : 'en-US';
 
             // Set event handlers
             this.currentUtterance.onstart = () => {
@@ -202,6 +252,19 @@ class TextToSpeechApp {
                 this.showStatus('Speaking...', 'speaking');
                 this.updateUI();
             };
+
+            // Mobile-specific voice handling
+            if (window.innerWidth <= 768 && selectedVoiceIndex !== '') {
+                // Force voice setting again for mobile browsers
+                const selectedVoice = this.voices[selectedVoiceIndex];
+                if (selectedVoice) {
+                    this.currentUtterance.voice = selectedVoice;
+                    this.currentUtterance.voiceURI = selectedVoice.voiceURI;
+                    this.currentUtterance.lang = selectedVoice.lang;
+                    
+                    console.log('Mobile: Using voice:', selectedVoice.name, selectedVoice.lang);
+                }
+            }
 
             // Start speaking
             this.synth.speak(this.currentUtterance);
@@ -403,6 +466,28 @@ class TextToSpeechApp {
             newViewport.name = 'viewport';
             newViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
             document.head.appendChild(newViewport);
+        }
+
+        // Force voice loading on mobile with multiple attempts
+        if (window.innerWidth <= 768) {
+            // Mobile-specific voice loading
+            const loadVoicesRepeatedly = () => {
+                this.loadVoices();
+                if (this.voices.length === 0) {
+                    setTimeout(loadVoicesRepeatedly, 500);
+                }
+            };
+            
+            setTimeout(loadVoicesRepeatedly, 1000);
+            
+            // Log available voices for debugging
+            setTimeout(() => {
+                console.log('Available voices on mobile:', this.voices.map(v => ({
+                    name: v.name,
+                    lang: v.lang,
+                    default: v.default
+                })));
+            }, 2000);
         }
 
         // Add touch feedback for buttons
