@@ -1,11 +1,11 @@
 /**
  * Umar TTS — Voice Studio
  *
- * Playback  → Web Speech API (browser built-in, all voices, full controls)
- * Download  → Google Translate TTS endpoint (returns real MP3, no API key needed)
- *             Falls back to chunking for texts over 190 chars, then merges blobs.
+ * Playback  → Web Speech API (browser voices, full controls)
+ * Download  → /api/tts serverless proxy → Google Translate TTS → real MP3
  *
- * Flow: type text → pick voice → Speak to preview → Download MP3 to save
+ * Speak button fix: shows "Loading…" state immediately on click so there's
+ * no confusing silent gap before the browser voices kick in.
  */
 
 class TTSApp {
@@ -13,6 +13,7 @@ class TTSApp {
         this.voices      = [];
         this.isPlaying   = false;
         this.isPaused    = false;
+        this.isLoading   = false;   // between click and onstart
         this.animFrameId = null;
         this.vizCtx      = null;
 
@@ -40,7 +41,7 @@ class TTSApp {
     /* ── Visualizer ─────────────────────────────── */
     setupViz() {
         const canvas = this.els.vizCanvas;
-        this.vizCtx = canvas.getContext('2d');
+        this.vizCtx  = canvas.getContext('2d');
         const resize = () => {
             canvas.width  = canvas.offsetWidth  * devicePixelRatio;
             canvas.height = canvas.offsetHeight * devicePixelRatio;
@@ -50,22 +51,38 @@ class TTSApp {
         window.addEventListener('resize', resize);
     }
 
-    startViz() {
+    startViz(loading = false) {
         this.els.vizWrap.classList.add('active');
         cancelAnimationFrame(this.animFrameId);
         let t = 0;
         const canvas = this.els.vizCanvas;
         const ctx    = this.vizCtx;
-        const draw   = () => {
+
+        const draw = () => {
             const W = canvas.offsetWidth, H = canvas.offsetHeight;
             ctx.clearRect(0, 0, W, H);
             const bars = 52, barW = W / bars;
+
             for (let i = 0; i < bars; i++) {
                 const phase = (i / bars) * Math.PI * 2;
-                const w1 = Math.sin(t * 2.1 + phase) * 0.5 + 0.5;
-                const w2 = Math.sin(t * 1.3 + phase * 1.7) * 0.3 + 0.3;
-                const h  = (w1 * w2 + 0.08) * H * 0.78;
-                ctx.globalAlpha = this.isPaused ? 0.2 : 0.35 + w1 * 0.65;
+
+                let h, alpha;
+                if (loading || this.isLoading) {
+                    // Gentle idle pulse while waiting for voice to start
+                    const pulse = Math.sin(t * 1.5 + phase * 0.5) * 0.5 + 0.5;
+                    h     = pulse * H * 0.25 + H * 0.05;
+                    alpha = 0.2 + pulse * 0.25;
+                } else if (this.isPaused) {
+                    h     = H * 0.15;
+                    alpha = 0.15;
+                } else {
+                    const w1 = Math.sin(t * 2.1 + phase) * 0.5 + 0.5;
+                    const w2 = Math.sin(t * 1.3 + phase * 1.7) * 0.3 + 0.3;
+                    h     = (w1 * w2 + 0.08) * H * 0.78;
+                    alpha = 0.35 + w1 * 0.65;
+                }
+
+                ctx.globalAlpha = alpha;
                 ctx.fillStyle   = '#f0a500';
                 ctx.fillRect(i * barW + barW * 0.12, (H - h) / 2, barW * 0.76, h);
             }
@@ -109,7 +126,7 @@ class TTSApp {
             og.label = lang;
             groups[lang].forEach(v => {
                 const o = document.createElement('option');
-                o.value = v.name;
+                o.value       = v.name;
                 o.textContent = v.name;
                 if (v.default) o.selected = true;
                 og.appendChild(o);
@@ -136,18 +153,36 @@ class TTSApp {
         const text = this.els.textInput.value.trim();
         if (!text) return;
 
+        // ── INSTANT feedback on click ──
+        this.isLoading = true;
+        this.isPaused  = false;
+        this.setPlayBtn('loading');
+        this.startViz(true);          // gentle idle pulse while waiting
+        this.updateUI();
+
         const u = this.buildUtterance(text);
-        u.onstart  = () => { this.isPlaying = true;  this.isPaused = false; this.startViz(); this.updateUI(); };
+
+        u.onstart = () => {
+            this.isLoading = false;
+            this.isPlaying = true;
+            this.isPaused  = false;
+            this.setPlayBtn('speaking');
+            this.startViz(false);     // full waveform now
+            this.updateUI();
+        };
         u.onpause  = () => { this.isPaused = true;  this.updateUI(); };
         u.onresume = () => { this.isPaused = false; this.updateUI(); };
         u.onend    = () => this.onEnd();
         u.onerror  = () => this.onEnd();
+
         speechSynthesis.speak(u);
     }
 
     onEnd() {
+        this.isLoading = false;
         this.isPlaying = false;
         this.isPaused  = false;
+        this.setPlayBtn('idle');
         this.stopViz();
         this.updateUI();
     }
@@ -163,17 +198,25 @@ class TTSApp {
     }
 
     quickTest() {
-        if (speechSynthesis.speaking) return;
+        if (speechSynthesis.speaking || this.isLoading) return;
         const orig = this.els.textInput.value;
         this.els.textInput.value = 'Hello! This is Umar TTS. Voice test complete.';
         this.onTextChange();
         const u = this.buildUtterance(this.els.textInput.value);
-        u.onstart = () => { this.isPlaying = true; this.isPaused = false; this.startViz(); this.updateUI(); };
-        u.onend   = () => {
-            this.onEnd();
-            setTimeout(() => { this.els.textInput.value = orig; this.onTextChange(); }, 300);
+
+        this.isLoading = true;
+        this.setPlayBtn('loading');
+        this.startViz(true);
+        this.updateUI();
+
+        u.onstart = () => {
+            this.isLoading = false;
+            this.isPlaying = true;
+            this.setPlayBtn('speaking');
+            this.startViz(false);
+            this.updateUI();
         };
-        u.onerror = () => {
+        u.onend = u.onerror = () => {
             this.onEnd();
             setTimeout(() => { this.els.textInput.value = orig; this.onTextChange(); }, 300);
         };
@@ -186,15 +229,42 @@ class TTSApp {
         this.els.textInput.focus();
     }
 
-    /* ── Download via Google Translate TTS ──────── */
+    /* ── Play button visual states ──────────────── */
+    setPlayBtn(state) {
+        const btn  = this.els.playBtn;
+        const span = btn.querySelector('span');
+        const icon = btn.querySelector('.btn-icon');
+
+        btn.classList.remove('speaking', 'loading');
+
+        if (state === 'loading') {
+            btn.classList.add('loading');
+            span.textContent = 'Starting…';
+            icon.innerHTML = `
+                <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="2"
+                    stroke-dasharray="22" stroke-dashoffset="0" fill="none"
+                    style="transform-origin:center;animation:spin 0.8s linear infinite"/>`;
+        } else if (state === 'speaking') {
+            btn.classList.add('speaking');
+            span.textContent = 'Speaking…';
+            icon.innerHTML = `
+                <rect x="4" y="3" width="4" height="14" rx="1.5" fill="currentColor"/>
+                <rect x="12" y="3" width="4" height="14" rx="1.5" fill="currentColor"/>`;
+        } else {
+            span.textContent = 'Speak';
+            icon.innerHTML = `<polygon points="5,3 17,10 5,17" fill="currentColor"/>`;
+        }
+    }
+
+    /* ── Download via /api/tts proxy ────────────── */
     async downloadAudio() {
         const text = this.els.textInput.value.trim();
         if (!text) return;
 
-        const btn     = this.els.downloadBtn;
-        const spanEl  = btn.querySelector('span');
-        btn.disabled  = true;
-        spanEl.textContent = 'Preparing…';
+        const btn    = this.els.downloadBtn;
+        const spanEl = btn.querySelector('span');
+        btn.disabled = true;
+        spanEl.textContent = 'Generating…';
 
         try {
             const voice = this.voices.find(v => v.name === this.els.voiceSelect.value);
@@ -204,43 +274,53 @@ class TTSApp {
             const blobs  = [];
 
             for (let i = 0; i < chunks.length; i++) {
-                spanEl.textContent = chunks.length > 1
-                    ? `Fetching ${i + 1} / ${chunks.length}…`
-                    : 'Generating…';
+                if (chunks.length > 1) {
+                    spanEl.textContent = `Generating ${i + 1}/${chunks.length}…`;
+                }
                 const blob = await this.fetchChunk(chunks[i], lang);
                 blobs.push(blob);
             }
 
             const finalBlob = new Blob(blobs, { type: 'audio/mpeg' });
-            const url  = URL.createObjectURL(finalBlob);
-            const a    = document.createElement('a');
+            const url = URL.createObjectURL(finalBlob);
+            const a   = document.createElement('a');
             a.href     = url;
             a.download = `umar-tts-${Date.now()}.mp3`;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             setTimeout(() => URL.revokeObjectURL(url), 8000);
 
-            spanEl.textContent = '✓ Saved!';
-            setTimeout(() => { spanEl.textContent = 'Download MP3'; btn.disabled = false; }, 2500);
+            spanEl.textContent = '✓ Downloaded!';
+            setTimeout(() => {
+                spanEl.textContent = 'Download MP3';
+                btn.disabled = false;
+            }, 2500);
 
         } catch (err) {
-            console.error('TTS download error:', err);
+            console.error('Download failed:', err);
             spanEl.textContent = 'Failed — try again';
-            setTimeout(() => { spanEl.textContent = 'Download MP3'; btn.disabled = false; }, 3000);
+            setTimeout(() => {
+                spanEl.textContent = 'Download MP3';
+                btn.disabled = false;
+            }, 3000);
         }
     }
 
     async fetchChunk(text, lang) {
-        const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${encodeURIComponent(lang)}&client=tw-ob`;
+        // Uses our own Vercel serverless proxy — no CORS issues
+        const url = `/api/tts?q=${encodeURIComponent(text)}&tl=${encodeURIComponent(lang)}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw new Error(`Proxy error: HTTP ${res.status}`);
         return res.blob();
     }
 
     splitText(text, maxLen) {
         if (text.length <= maxLen) return [text];
-        const chunks = [];
+        const chunks    = [];
         const sentences = text.match(/[^.!?]+[.!?]*/g) || [text];
         let current = '';
+
         for (const s of sentences) {
             if ((current + s).length > maxLen) {
                 if (current.trim()) chunks.push(current.trim());
@@ -268,18 +348,19 @@ class TTSApp {
         return parts;
     }
 
-    /* ── UI ─────────────────────────────────────── */
+    /* ── UI helpers ─────────────────────────────── */
     bindEvents() {
-        this.els.textInput.addEventListener('input', () => this.onTextChange());
-        this.els.rateRange.addEventListener('input', () => {
+        this.els.textInput.addEventListener('input',   () => this.onTextChange());
+        this.els.rateRange.addEventListener('input',   () => {
             this.els.rateValue.textContent = parseFloat(this.els.rateRange.value).toFixed(1) + '×';
         });
-        this.els.pitchRange.addEventListener('input', () => {
+        this.els.pitchRange.addEventListener('input',  () => {
             this.els.pitchValue.textContent = parseFloat(this.els.pitchRange.value).toFixed(1);
         });
         this.els.volumeRange.addEventListener('input', () => {
             this.els.volumeValue.textContent = Math.round(parseFloat(this.els.volumeRange.value) * 100) + '%';
         });
+
         this.els.playBtn.addEventListener('click',      () => this.speak());
         this.els.pauseBtn.addEventListener('click',     () => this.togglePause());
         this.els.stopBtn.addEventListener('click',      () => this.stop());
@@ -290,7 +371,7 @@ class TTSApp {
         if ('onvoiceschanged' in speechSynthesis) {
             speechSynthesis.onvoiceschanged = () => this.loadVoices();
         }
-        document.addEventListener('click', () => this.loadVoices(), { once: true });
+        document.addEventListener('click',   () => this.loadVoices(), { once: true });
         document.addEventListener('keydown', e => this.handleKeyboard(e));
     }
 
@@ -298,27 +379,24 @@ class TTSApp {
         const len = this.els.textInput.value.length;
         this.els.charCount.textContent = len;
         const cc = this.els.charCount.parentElement;
-        cc.className = 'char-counter' + (len > 4500 ? ' danger' : len > 4000 ? ' warn' : '');
+        cc.className = 'char-counter'
+            + (len > 4500 ? ' danger' : len > 4000 ? ' warn' : '');
         this.updateUI();
     }
 
     updateUI() {
         const hasText     = this.els.textInput.value.trim().length > 0;
         const voicesReady = this.voices.length > 0;
+        const busy        = this.isPlaying || this.isLoading;
 
-        this.els.playBtn.disabled      = !hasText || !voicesReady;
+        this.els.playBtn.disabled      = !hasText || !voicesReady || busy;
         this.els.pauseBtn.disabled     = !this.isPlaying;
-        this.els.stopBtn.disabled      = !this.isPlaying;
-        this.els.quickTestBtn.disabled = this.isPlaying;
+        this.els.stopBtn.disabled      = !busy;
+        this.els.quickTestBtn.disabled = busy;
         this.els.downloadBtn.disabled  = !hasText || !voicesReady;
 
-        this.els.pauseBtn.querySelector('span').textContent = this.isPaused ? 'Resume' : 'Pause';
-
-        if (this.isPlaying && !this.isPaused) {
-            this.els.playBtn.classList.add('speaking');
-        } else {
-            this.els.playBtn.classList.remove('speaking');
-        }
+        this.els.pauseBtn.querySelector('span').textContent =
+            this.isPaused ? 'Resume' : 'Pause';
     }
 
     handleKeyboard(e) {
@@ -355,7 +433,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.addEventListener('beforeunload', () => speechSynthesis?.cancel());
-
 document.addEventListener('visibilitychange', () => {
     if (document.hidden && speechSynthesis.speaking) speechSynthesis.pause();
     else if (!document.hidden && speechSynthesis.paused) speechSynthesis.resume();
