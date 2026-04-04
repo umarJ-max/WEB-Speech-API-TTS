@@ -272,6 +272,7 @@ class TTSApp {
 
             const chunks = this.splitText(text, 190);
             const blobs  = [];
+            const rate = parseFloat(this.els.rateRange.value);
 
             for (let i = 0; i < chunks.length; i++) {
                 if (chunks.length > 1) {
@@ -281,11 +282,21 @@ class TTSApp {
                 blobs.push(blob);
             }
 
-            const finalBlob = new Blob(blobs, { type: 'audio/mpeg' });
+            // Merge raw MP3 chunks first
+            let finalBlob = new Blob(blobs, { type: 'audio/mpeg' });
+            let ext = 'mp3';
+
+            // Apply speed correction if rate is not 1x
+            if (Math.abs(rate - 1.0) >= 0.05) {
+                spanEl.textContent = 'Adjusting speed…';
+                finalBlob = await this.applySpeedToBlob(finalBlob, rate);
+                ext = 'wav';
+            }
+
             const url = URL.createObjectURL(finalBlob);
             const a   = document.createElement('a');
             a.href     = url;
-            a.download = `umar-tts-${Date.now()}.mp3`;
+            a.download = `umar-tts-${Date.now()}.${ext}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -313,6 +324,91 @@ class TTSApp {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Proxy error: HTTP ${res.status}`);
         return res.blob();
+    }
+
+    /**
+     * Google TTS always outputs at its own fixed slow pace.
+     * This re-renders the MP3 through Web Audio API at the user's chosen
+     * speed (rate slider), using pitch-corrected time-stretching so the
+     * downloaded file sounds identical to what they heard in the browser.
+     */
+    async applySpeedToBlob(blob, rate) {
+        if (Math.abs(rate - 1.0) < 0.05) return blob; // no change needed
+
+        const arrayBuf = await blob.arrayBuffer();
+        const audioCtx = new OfflineAudioContext(1, 1, 44100); // temp to decode
+
+        let decoded;
+        try {
+            decoded = await audioCtx.decodeAudioData(arrayBuf);
+        } catch (e) {
+            // If decode fails just return original
+            return blob;
+        }
+
+        const originalDuration = decoded.numberOfChannels > 0
+            ? decoded.length / decoded.sampleRate
+            : 0;
+        if (originalDuration === 0) return blob;
+
+        // New length after time-stretch
+        const newLength = Math.ceil(decoded.length / rate);
+        const offlineCtx = new OfflineAudioContext(
+            decoded.numberOfChannels,
+            newLength,
+            decoded.sampleRate
+        );
+
+        const src = offlineCtx.createBufferSource();
+        src.buffer = decoded;
+        src.playbackRate.value = rate;  // pitch-corrected in OfflineAudioContext
+        src.connect(offlineCtx.destination);
+        src.start(0);
+
+        const rendered = await offlineCtx.startRendering();
+
+        // Encode rendered AudioBuffer → WAV blob
+        return this.audioBufferToWav(rendered);
+    }
+
+    audioBufferToWav(buffer) {
+        const numCh      = buffer.numberOfChannels;
+        const sampleRate = buffer.sampleRate;
+        const length     = buffer.length;
+        const arrayBuf   = new ArrayBuffer(44 + length * numCh * 2);
+        const view       = new DataView(arrayBuf);
+
+        const writeStr = (off, str) => {
+            for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i));
+        };
+        const write32  = (off, v) => view.setUint32(off, v, true);
+        const write16  = (off, v) => view.setUint16(off, v, true);
+
+        writeStr(0,  'RIFF');
+        write32(4,   36 + length * numCh * 2);
+        writeStr(8,  'WAVE');
+        writeStr(12, 'fmt ');
+        write32(16,  16);
+        write16(20,  1);                        // PCM
+        write16(22,  numCh);
+        write32(24,  sampleRate);
+        write32(28,  sampleRate * numCh * 2);  // byte rate
+        write16(32,  numCh * 2);               // block align
+        write16(34,  16);                       // bits per sample
+        writeStr(36, 'data');
+        write32(40,  length * numCh * 2);
+
+        // Interleave channels
+        let offset = 44;
+        for (let i = 0; i < length; i++) {
+            for (let ch = 0; ch < numCh; ch++) {
+                const sample = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+                view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+                offset += 2;
+            }
+        }
+
+        return new Blob([arrayBuf], { type: 'audio/wav' });
     }
 
     splitText(text, maxLen) {
