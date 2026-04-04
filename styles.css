@@ -121,15 +121,16 @@ body {
 }
 
 /* ── Textarea ──────────────────────────────────────── */
-.textarea-wrap { position: relative; }
+.textarea-wrap { display: flex; flex-direction: column; }
 
 #textInput {
     width: 100%;
     min-height: 140px;
     background: var(--surface2);
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 0.9rem 0.9rem 2.4rem;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    border-bottom: none;
+    padding: 0.9rem;
     font-family: 'DM Mono', monospace;
     font-size: 0.9rem;
     font-weight: 300;
@@ -145,31 +146,38 @@ body {
     box-shadow: 0 0 0 3px var(--accent-dim);
 }
 
+/* Footer bar attached below textarea — never overlaps text */
 .textarea-footer {
-    position: absolute;
-    bottom: 0.65rem;
-    left: 0.9rem;
-    right: 0.9rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    pointer-events: none;
+    padding: 0.4rem 0.75rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    transition: border-color 0.2s;
+}
+
+#textInput:focus ~ .textarea-footer,
+#textInput:focus + .textarea-footer {
+    border-color: var(--accent);
+    box-shadow: 0 3px 0 0 var(--accent-dim), -3px 0 0 0 var(--accent-dim), 3px 0 0 0 var(--accent-dim);
 }
 
 .char-counter {
     font-family: 'DM Mono', monospace;
     font-size: 0.7rem;
     color: var(--text-dim);
+    transition: color 0.2s;
 }
 .char-counter.warn   { color: #e09a00; }
 .char-counter.danger { color: #e05252; }
 
 .icon-btn {
-    pointer-events: all;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px; height: 24px;
+    width: 22px; height: 22px;
     background: transparent;
     border: 1px solid var(--border);
     border-radius: 50%;
