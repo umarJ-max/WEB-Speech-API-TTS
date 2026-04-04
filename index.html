@@ -3,109 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Umar TTS - Text to Speech</title>
+    <title>Umar TTS — Voice Studio</title>
     <link rel="icon" type="image/png" href="Icon.png">
     <link rel="apple-touch-icon" href="Icon.png">
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="app">
-        <div class="floating-status" id="status">Ready</div>
-        
-        <main class="main">
-            <!-- Title Section -->
-            <div class="hero">
-                <h1 class="title"><span class="brand">Umar</span> TTS</h1>
-                <p class="subtitle">Transform text into speech with AI-powered voices</p>
-            </div>
 
-            <!-- Instructions -->
-            <div class="instructions">
-                <h3>How to Use:</h3>
-                <ol>
-                    <li>📝 <strong>Write your text</strong> in the text area below</li>
-                    <li>🎤 <strong>Select a voice</strong> from the dropdown menu</li>
-                    <li>⚙️ <strong>Adjust settings</strong> (speed, pitch, volume) if needed</li>
-                    <li>▶️ <strong>Hit the Speak button</strong> and wait</li>
-                    <li>⚠️ <strong>Don't press twice!</strong> Wait for the speech to complete</li>
-                </ol>
-            </div>
+<div class="app">
 
-            <!-- Text Input -->
-            <div class="input-container">
-                <div class="input-wrapper">
-                    <textarea 
-                        id="textInput" 
-                        placeholder="Enter your text here..."
-                        maxlength="5000"
-                    ></textarea>
-                    <div class="char-counter">
-                        <span id="charCount">0</span>/5000
-                    </div>
+    <!-- Ambient background blobs -->
+    <div class="bg-blob b1"></div>
+    <div class="bg-blob b2"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <span class="logo-icon">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                    <rect x="1" y="6" width="3" height="10" rx="1.5" fill="currentColor"/>
+                    <rect x="6" y="3" width="3" height="16" rx="1.5" fill="currentColor"/>
+                    <rect x="11" y="1" width="3" height="20" rx="1.5" fill="currentColor"/>
+                    <rect x="16" y="5" width="3" height="12" rx="1.5" fill="currentColor" opacity="0.6"/>
+                </svg>
+            </span>
+            <span>Umar TTS</span>
+        </div>
+        <div class="status-pill" id="statusPill">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Ready</span>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="main">
+
+        <!-- Text area panel -->
+        <section class="panel panel-text">
+            <div class="panel-label">01 — INPUT</div>
+            <div class="textarea-wrap">
+                <textarea
+                    id="textInput"
+                    placeholder="Type or paste your text here…"
+                    maxlength="5000"
+                    spellcheck="false"
+                ></textarea>
+                <div class="textarea-footer">
+                    <span class="char-counter"><span id="charCount">0</span> / 5000</span>
+                    <button class="icon-btn" id="clearBtn" title="Clear text" aria-label="Clear">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Voice + controls panel -->
+        <section class="panel panel-controls">
+            <div class="panel-label">02 — VOICE &amp; SETTINGS</div>
+
+            <div class="control-row">
+                <label class="control-label">Voice</label>
+                <div class="select-wrap">
+                    <select id="voiceSelect">
+                        <option value="">Loading voices…</option>
+                    </select>
+                    <span class="select-arrow">
+                        <svg width="12" height="7" viewBox="0 0 12 7" fill="none">
+                            <path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
                 </div>
             </div>
 
-                <!-- Controls Grid -->
-                <div class="controls-grid">
-                    <div class="control-item">
-                        <label>Voice</label>
-                        <select id="voiceSelect" class="modern-select">
-                            <option value="">Loading voices...</option>
-                        </select>
+            <div class="sliders-row">
+                <div class="slider-item">
+                    <div class="slider-header">
+                        <span class="slider-label">Speed</span>
+                        <span class="slider-val mono" id="rateValue">1.0×</span>
                     </div>
-                    <div class="control-item">
-                        <label>Speed <span id="rateValue">1.0</span>x</label>
-                        <input type="range" id="rateRange" class="modern-slider" min="0.1" max="3" step="0.1" value="1">
-                    </div>
-                    <div class="control-item">
-                        <label>Pitch <span id="pitchValue">1.0</span></label>
-                        <input type="range" id="pitchRange" class="modern-slider" min="0" max="2" step="0.1" value="1">
-                    </div>
-                    <div class="control-item">
-                        <label>Volume <span id="volumeValue">100</span>%</label>
-                        <input type="range" id="volumeRange" class="modern-slider" min="0" max="1" step="0.1" value="1">
-                    </div>
+                    <input type="range" id="rateRange" min="0.1" max="3" step="0.1" value="1">
                 </div>
-
-                <!-- Action Buttons -->
-                <div class="actions">
-                    <button id="playBtn" class="action-btn primary" disabled>
-                        <i class="fas fa-play"></i>
-                        Speak
-                    </button>
-                    <button id="pauseBtn" class="action-btn secondary" disabled>
-                        <i class="fas fa-pause"></i>
-                        Pause
-                    </button>
-                    <button id="stopBtn" class="action-btn danger" disabled>
-                        <i class="fas fa-stop"></i>
-                        Stop
-                    </button>
-                    <button id="quickTestBtn" class="action-btn outline">
-                        <i class="fas fa-zap"></i>
-                        Quick Test
-                    </button>
+                <div class="slider-item">
+                    <div class="slider-header">
+                        <span class="slider-label">Pitch</span>
+                        <span class="slider-val mono" id="pitchValue">1.0</span>
+                    </div>
+                    <input type="range" id="pitchRange" min="0" max="2" step="0.1" value="1">
                 </div>
-
-            <!-- Progress Bar -->
-            <div class="progress-container" id="progressContainer" style="display: none;">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
+                <div class="slider-item">
+                    <div class="slider-header">
+                        <span class="slider-label">Volume</span>
+                        <span class="slider-val mono" id="volumeValue">100%</span>
+                    </div>
+                    <input type="range" id="volumeRange" min="0" max="1" step="0.01" value="1">
                 </div>
-                <div class="progress-text" id="progressText">Speaking...</div>
             </div>
-        </main>
+        </section>
 
-        <!-- Footer -->
-        <footer class="footer">
-            <p>&copy; 2025 Created by <strong>Umar</strong></p>
-        </footer>
-    </div>
+        <!-- Actions panel -->
+        <section class="panel panel-actions">
+            <div class="panel-label">03 — CONTROLS</div>
 
-    <script src="script.js"></script>
+            <div class="action-grid">
+                <button id="playBtn" class="btn btn-primary" disabled>
+                    <svg class="btn-icon" viewBox="0 0 20 20" fill="none">
+                        <polygon points="5,3 17,10 5,17" fill="currentColor"/>
+                    </svg>
+                    <span>Speak</span>
+                </button>
+
+                <button id="pauseBtn" class="btn btn-ghost" disabled>
+                    <svg class="btn-icon" viewBox="0 0 20 20" fill="none">
+                        <rect x="4" y="3" width="4" height="14" rx="1.5" fill="currentColor"/>
+                        <rect x="12" y="3" width="4" height="14" rx="1.5" fill="currentColor"/>
+                    </svg>
+                    <span>Pause</span>
+                </button>
+
+                <button id="stopBtn" class="btn btn-ghost" disabled>
+                    <svg class="btn-icon" viewBox="0 0 20 20" fill="none">
+                        <rect x="4" y="4" width="12" height="12" rx="2" fill="currentColor"/>
+                    </svg>
+                    <span>Stop</span>
+                </button>
+
+                <button id="quickTestBtn" class="btn btn-ghost">
+                    <svg class="btn-icon" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 2v4M10 14v4M2 10h4M14 10h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <circle cx="10" cy="10" r="3" fill="currentColor"/>
+                    </svg>
+                    <span>Test Voice</span>
+                </button>
+            </div>
+
+            <!-- Download section -->
+            <div class="download-section">
+                <div class="download-info">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.3"/>
+                        <path d="M8 7v4M8 5.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                    <span>Capture &amp; download audio as WebM</span>
+                </div>
+                <div class="download-btns">
+                    <button id="recordBtn" class="btn btn-record" disabled>
+                        <span class="rec-dot"></span>
+                        <span>Record &amp; Speak</span>
+                    </button>
+                    <button id="downloadBtn" class="btn btn-download" disabled>
+                        <svg class="btn-icon" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 3v9M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M3 15h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                        <span>Download</span>
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Waveform visualizer -->
+        <div class="visualizer-wrap" id="vizWrap">
+            <canvas id="vizCanvas"></canvas>
+        </div>
+
+    </main>
+
+    <footer class="footer">
+        <span class="mono">© 2025</span>
+        <span>Built by <strong>Umar</strong></span>
+        <span class="mono kbd-hint">Ctrl+Enter to speak · Space to pause · Esc to stop</span>
+    </footer>
+
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
